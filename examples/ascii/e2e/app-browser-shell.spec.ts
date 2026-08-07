@@ -1,0 +1,111 @@
+import { expect, test } from "@playwright/test";
+
+import { appSchema } from "../src/app/app-schema";
+import { expectNoForbiddenCanvasUi } from "./canvas-handle-helpers";
+import {
+  expectToolcraftProductObservableToChange,
+  getToolcraftProductObservableSnapshot,
+} from "./product-observable-helpers";
+
+test("browser renders the Toolcraft template shell instead of a reference iframe shell", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await expect(page.locator('[data-slot="toolcraft-runtime-app"]')).toBeVisible();
+
+  if (appSchema.assembly.surfaces.canvas.enabled) {
+    await expect(page.getByRole("application", { name: "Canvas viewport" })).toBeVisible();
+  }
+
+  const nonCanvasIframeCount = await page.evaluate(
+    () =>
+      Array.from(document.querySelectorAll("iframe")).filter(
+        (frame) => !frame.closest("[data-toolcraft-canvas-slot]"),
+      ).length,
+  );
+
+  expect(
+    nonCanvasIframeCount,
+    "Reference iframes may not replace the Toolcraft shell. Preserve reference output inside ToolcraftApp canvasContent.",
+  ).toBe(0);
+});
+
+test("browser preserves the Toolcraft canvas backing surface", async ({ page }) => {
+  if (!appSchema.assembly.surfaces.canvas.enabled) {
+    return;
+  }
+
+  await page.goto("/");
+
+  const canvasViewport = page.getByRole("application", { name: "Canvas viewport" });
+
+  await expect(canvasViewport).toBeVisible();
+
+  const backgroundColor = await canvasViewport.evaluate((element) =>
+    window.getComputedStyle(element).backgroundColor,
+  );
+
+  expect(
+    backgroundColor,
+    "The runtime CanvasShell backing must stay visible. Product renderers may customize their own output background, but they must not hide or make the workspace shell transparent.",
+  ).not.toMatch(/^(?:transparent|rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\))$/i);
+});
+
+test("browser canvas contains product output without app UI controls or CTA copy", async ({
+  page,
+}) => {
+  if (!appSchema.assembly.surfaces.canvas.enabled) {
+    return;
+  }
+
+  await page.goto("/");
+  await expect(page.getByRole("application", { name: "Canvas viewport" })).toBeVisible();
+  await expectNoForbiddenCanvasUi(page);
+});
+
+test("product observable helper catches changed and unchanged output", async ({ page }) => {
+  await page.setContent(`
+    <div data-toolcraft-product-output>Before</div>
+    <button type="button" id="change-output">Change output</button>
+  `);
+
+  const snapshot = await getToolcraftProductObservableSnapshot(page);
+
+  expect(
+    snapshot,
+    "The product observable helper should read marked product output.",
+  ).toContain("Before");
+
+  await expectToolcraftProductObservableToChange(page, async () => {
+    await page.locator("#change-output").evaluate((button) => {
+      button.previousElementSibling!.textContent = "After";
+    });
+  });
+
+  await expect(
+    expectToolcraftProductObservableToChange(page, async () => {}, {
+      timeoutMs: 100,
+    }),
+  ).rejects.toThrow(/Product output should change/);
+});
+
+test("canvas no-UI helper rejects unclassified canvas text", async ({ page }) => {
+  await page.setContent(`
+    <div data-toolcraft-canvas-world>
+      <div>Click to upload an image</div>
+    </div>
+  `);
+
+  await expect(expectNoForbiddenCanvasUi(page)).rejects.toThrow(
+    /Canvas text must be product output/,
+  );
+
+  await page.setContent(`
+    <div data-toolcraft-canvas-world>
+      <div data-toolcraft-product-output>ASCII output</div>
+    </div>
+  `);
+
+  await expectNoForbiddenCanvasUi(page);
+});

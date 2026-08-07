@@ -1,0 +1,52 @@
+.root {
+  align-items: stretch;
+  display: flex;
+  height: 100%;
+  justify-content: stretch;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  width: 100%;
+}
+
+.canvas {
+  display: block;
+  height: 100%;
+  touch-action: none;
+  width: 100%;
+}
+
+.canvas[data-model-status="empty"],
+.canvas[data-model-status="error"] {
+  opacity: 0;
+}
+
+.root[data-melt-enabled="true"] .canvas {
+  cursor: none;
+}
+
+.meltCursor {
+  background: radial-gradient(
+    circle,
+    rgb(255 198 126 / 18%) 0%,
+    rgb(255 155 72 / 9%) 48%,
+    transparent 72%
+  );
+  border: 1px solid rgb(255 226 191 / 92%);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgb(47 16 0 / 32%),
+    0 0 18px rgb(255 143 58 / 42%),
+    inset 0 0 14px rgb(255 215 174 / 26%);
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transition: opacity 90ms ease;
+  will-change: height, opacity, transform, width;
+}
+
+.meltCursor[data-visible="true"] {
+  opacity: 1;
+}

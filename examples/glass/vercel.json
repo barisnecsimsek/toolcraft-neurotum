@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/demos/glass/assets/:path*", "destination": "/assets/:path*" },
+    {
+      "source": "/demos/glass/liquid-glass-default-background.png",
+      "destination": "/liquid-glass-default-background.png"
+    },
+    {
+      "source": "/demos/glass/liquid-glass-default-button-image.png",
+      "destination": "/liquid-glass-default-button-image.png"
+    },
+    {
+      "source": "/demos/glass/liquid-glass-default-texture.jpg",
+      "destination": "/liquid-glass-default-texture.jpg"
+    },
+    { "source": "/demos/glass", "destination": "/" },
+    { "source": "/demos/glass/:path*", "destination": "/" }
+  ]
+}

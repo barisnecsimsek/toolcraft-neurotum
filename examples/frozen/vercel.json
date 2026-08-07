@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build -- --base /demos/frozen/",
+  "rewrites": [
+    {
+      "source": "/demos/frozen/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/demos/frozen/frozen/:path*",
+      "destination": "/frozen/:path*"
+    },
+    { "source": "/demos/frozen", "destination": "/" },
+    { "source": "/demos/frozen/:path*", "destination": "/" }
+  ]
+}

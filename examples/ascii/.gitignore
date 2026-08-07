@@ -1,0 +1,47 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+dist-ssr
+.vite
+.turbo
+.output
+.next
+*.tsbuildinfo
+
+# Test output
+coverage
+test-results
+playwright-report
+.playwright-mcp
+
+# Local visual-comparison artifacts
+/local-dither-*.png
+/local-reference-scene-*.png
+/performance-optimized-*.png
+/reference-dither-*.png
+/reference-network.txt
+
+# Local environment
+.env
+.env.*
+!.env.example
+.toolcraft
+.vercel
+skills-lock.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

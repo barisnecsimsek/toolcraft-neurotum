@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/demos/liquid-metal/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    { "source": "/demos/liquid-metal", "destination": "/" },
+    { "source": "/demos/liquid-metal/:path*", "destination": "/" }
+  ]
+}
