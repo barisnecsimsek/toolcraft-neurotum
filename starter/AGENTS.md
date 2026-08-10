@@ -197,6 +197,7 @@ Use `pnpm install` before this final gate when the folder is fresh or dependenci
 
 Do not stop or kill existing local servers to free a port during a first start. `pnpm dev`, `pnpm preview`, and browser verification prefer port `3002`, but automatically move to the next free port only while assigning this app's first saved port. After a saved port exists, normal `pnpm dev` / `pnpm preview` uses that same port; if that port is already serving this app, report that existing URL instead of starting a duplicate. Use `TOOLCRAFT_PORT`, `TOOLCRAFT_DEV_PORT`, or `TOOLCRAFT_TEST_PORT` only to change the preferred starting port before a saved port exists. A dev/preview launch is successful only after the selected port serves this app's Toolcraft server identity endpoint plus the `toolcraft-app-title` marker from `index.html`; never report a URL just because some server is listening there. When deliberately restarting this app server, use `pnpm dev:restart` or `pnpm preview:restart`; restart mode reuses the previously saved app port, stops the listener on that exact port if it is still running, force-stops it if it does not release the port, starts on the same port again, and verifies the identity before saving/reporting the port.
 
+hello
 ## App Completion Bar
 
 The app is complete only when:
