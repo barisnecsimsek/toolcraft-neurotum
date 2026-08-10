@@ -1,21 +1,19 @@
 import { ToolcraftApp } from "@/toolcraft/runtime/react";
 
-import { appComposition } from "../app/app-composition";
+import { appSchema } from "../app/app-schema";
+import {
+  handleParticleGridPanelAction,
+  ParticleGridCanvas,
+} from "../app/particle-grid";
 
 export function AppHome(): React.JSX.Element {
   return (
     <ToolcraftApp
-      canvasContent={appComposition.canvasContent}
+      canvasContent={<ParticleGridCanvas />}
       className="h-dvh min-h-dvh"
-      controlRenderers={appComposition.controlRenderers}
-      exportRenderer={appComposition.exportRenderer}
-      infiniteCanvasContent={appComposition.infiniteCanvasContent}
-      modelPresentation={appComposition.modelPresentation}
-      onPanelAction={appComposition.onPanelAction}
-      renderDefaultCanvasMedia={appComposition.renderDefaultCanvasMedia}
-      rendererPipelineRegistration={appComposition.rendererPipelineRegistration}
-      sceneBoundsProvider={appComposition.sceneBoundsProvider}
-      schema={appComposition.schema}
+      onPanelAction={handleParticleGridPanelAction}
+      renderDefaultCanvasMedia={false}
+      schema={appSchema}
     />
   );
 }
