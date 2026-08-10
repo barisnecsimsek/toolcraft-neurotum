@@ -8,6 +8,7 @@ It works with any AI agent (Codex, Claude, Cursor).
 
 Built by [Pixel Point](https://pixelpoint.io/).
 
+
 ## Create a project
 
 Run the CLI:
