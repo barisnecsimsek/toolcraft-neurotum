@@ -3,7 +3,7 @@ import { defineToolcraft } from "@/toolcraft/runtime";
 export const appSchema = defineToolcraft({
   canvas: {
     enabled: true,
-    renderScale: { defaultValue: 1, enabled: true, max: 2, min: 1, step: 0.25 },
+    renderScale: true,
     size: { height: 360, unit: "px", width: 640 },
     sizing: { mode: "editable-output" },
     upload: true,
@@ -394,6 +394,7 @@ export const appSchema = defineToolcraft({
                 {
                   icon: "upload-simple",
                   label: "Export PNG",
+                  role: "export-image",
                   value: "export.png",
                 },
               ],

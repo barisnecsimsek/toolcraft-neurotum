@@ -8,6 +8,25 @@ Particle Grid Effect is a single-image Toolcraft product that reconstructs an up
 
 ## Decision Trail
 
+### Iteration 3 — Root install and runtime compatibility repair
+
+- Request: "NPM install çalışmıyor. task run yapınca siteyi göremiyorum."
+- Task type: Failed local install, failed development startup, and product renderer/runtime compatibility repair.
+- Verification tier: Tier 3 — dependency entrypoint plus custom renderer and export integration affect startup and visible canvas output.
+- User-visible result: `npm install` and `task run` work from the repository root, the Particle Grid UI renders on the saved local port, and the Vite error overlay is absent.
+- Source/reference checked: Reproduced root npm behavior, the live Vite overlay, browser console output, current runtime exports, media presentation hooks, product export renderer contract, and the existing Particle Grid implementation.
+- Reference inputs: None; this is a compatibility repair against the checked-in runtime.
+- Docs/contracts read: `AGENTS.md`, `workflow.md`, `decision-contract.md`, `core/runtime-boundary.md`, `component-rules.md`, and `renderer-technique.md`; verification-phase contracts are read immediately before proof.
+- Contract rules applied: `runtime-shell-required`, `canvas-no-app-ui`, `canvas-surface-preserved`, `output-export-required`, `acceptance-product-observable`, and `workflow-required`.
+- View interaction intent: `non-spatial`; the output is a flat image transform and uses the existing Toolcraft canvas viewport only.
+- Interaction ownership: Source upload stays in the built-in panel `fileDrop`; canvas pan/zoom remains runtime-owned, with no duplicate product interaction surface.
+- Decision: Add a root npm proxy package, install the generated app through `npm --prefix starter`, restore runtime dependencies removed from the app manifest, consume binary media through runtime presentation URLs, and move image export to the current runtime-owned `exportRenderer` path.
+- Alternatives rejected: npm workspace hoisting because Toolcraft deliberately verifies `starter/node_modules/vite`; editing the signed runtime to restore a removed legacy helper; keeping direct object-URL downloads in product code.
+- State/output mapping: root npm scripts delegate install/dev to `starter`; `source.image` resolves to a runtime presentation URL for preview; the cached decoded source plus current `particle.*` state draw preview and the runtime-owned image export frame.
+- Performance intent: Ordinary functional repair; no measured performance iteration or full audit was requested or run.
+- Verification: Root `npm install` passed with zero vulnerabilities; exact root `task run` started and verified port 3002; browser reload showed the full Toolcraft UI; a real image upload set the Particle Grid output ready with no new browser warnings/errors. Focused TypeScript output contains no errors in the repaired schema, composition, route, or renderer, while the repository-wide typecheck remains blocked by pre-existing acceptance/performance contract drift.
+- Risks: The prior Particle Grid port was authored against an older Toolcraft API, so focused compatibility repair may expose additional schema or acceptance drift beyond the startup path.
+
 ### Iteration 2 — Figma Particle Grid reference port
 
 - Request: Replace Bayer Dither with the same effect implemented in `inspiration/figma-shaders/particle-grid-effect.js`.
@@ -70,9 +89,9 @@ Particle Grid Effect is a single-image Toolcraft product that reconstructs an up
 
 ### Export
 
-- Decision: Sticky Export PNG action with PNG/JPG and 2K/4K/8K settings through `createToolcraftPngExportCanvas`.
+- Decision: Sticky runtime-owned image export with PNG/JPG and 2K/4K/8K settings through `ToolcraftAppComposition.exportRenderer`.
 - Reason: Still Toolcraft products require downloadable image output and standardized background/resolution behavior.
-- Evidence: `exportParticleGridImage` uses the standard export helper; browser tests decode output and verify selected dimensions and file type.
+- Evidence: The typed `export-image` action delegates allocation, background, encoding, download, and progress to the runtime; `particleGridExportRenderer` supplies only deterministic product pixels.
 
 ### Performance
 

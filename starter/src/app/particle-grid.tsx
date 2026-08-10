@@ -3,14 +3,14 @@
 import * as React from "react";
 
 import {
-  createToolcraftPngExportCanvas,
   shouldIncludeToolcraftPreviewBackground,
-  type ToolcraftMediaAsset,
+  type ToolcraftImageAsset,
+  type ToolcraftProductExportRenderer,
   type ToolcraftState,
 } from "@/toolcraft/runtime";
 import {
-  type ToolcraftPanelActionContext,
   useToolcraft,
+  useToolcraftMediaPresentationUrls,
 } from "@/toolcraft/runtime/react";
 
 const sourceTarget = "source.image";
@@ -247,7 +247,7 @@ type ParticleGridRenderSettings = {
   rows: number;
   shrinkThreshold: number;
   softness: number;
-  sourceAsset: ToolcraftMediaAsset;
+  sourceAsset: ToolcraftImageAsset;
   tintColor: string;
 };
 
@@ -379,16 +379,19 @@ function parseHexColor(value: string, alpha = 1): [number, number, number, numbe
   ];
 }
 
-function getSourceAsset(state: ToolcraftState): ToolcraftMediaAsset | undefined {
+function getSourceAsset(state: ToolcraftState): ToolcraftImageAsset | undefined {
   return state.mediaAssets.find(
-    (asset) =>
-      (asset.assetKind ?? "image") === "image" &&
+    (asset): asset is ToolcraftImageAsset =>
+      asset.assetKind === "image" &&
       (asset.sourceTarget === sourceTarget || asset.sourceTarget === undefined),
   );
 }
 
-function loadSourceImage(asset: ToolcraftMediaAsset): Promise<HTMLImageElement> {
-  const cacheKey = `${asset.id}:${asset.dataUrl}`;
+function loadSourceImage(
+  asset: ToolcraftImageAsset,
+  sourceUrl: string,
+): Promise<HTMLImageElement> {
+  const cacheKey = asset.resourceRef;
   const cached = imageCache.get(cacheKey);
 
   if (cached) {
@@ -400,7 +403,7 @@ function loadSourceImage(asset: ToolcraftMediaAsset): Promise<HTMLImageElement> 
     image.decoding = "async";
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error(`Unable to decode ${asset.fileName}.`));
-    image.src = asset.dataUrl;
+    image.src = sourceUrl;
   });
 
   imageCache.set(cacheKey, promise);
@@ -409,7 +412,7 @@ function loadSourceImage(asset: ToolcraftMediaAsset): Promise<HTMLImageElement> 
 
 function getRenderSettings(
   state: ToolcraftState,
-  sourceAsset: ToolcraftMediaAsset,
+  sourceAsset: ToolcraftImageAsset,
   outputWidth: number,
   outputHeight: number,
   includeBackground = shouldIncludeToolcraftPreviewBackground({ state }),
@@ -639,13 +642,18 @@ export class ParticleGridWebGlRenderer {
 
 export function ParticleGridCanvas(): React.JSX.Element {
   const { state } = useToolcraft();
+  const presentationUrls = useToolcraftMediaPresentationUrls(state.mediaAssets);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const rendererRef = React.useRef<ParticleGridWebGlRenderer | null>(null);
   const [decodedSource, setDecodedSource] = React.useState<{
-    assetId: string;
     image: HTMLImageElement;
+    sourceKey: string;
   } | null>(null);
   const sourceAsset = getSourceAsset(state);
+  const sourceKey = sourceAsset
+    ? `${sourceAsset.id}:${sourceAsset.resourceRef}`
+    : null;
+  const sourceUrl = sourceAsset ? presentationUrls.get(sourceAsset.id) : undefined;
   const renderScale = clampNumber(state.values["canvas.renderScale"], 1, 1, 2);
   const outputWidth = Math.max(1, Math.round(state.canvas.size.width * renderScale));
   const outputHeight = Math.max(1, Math.round(state.canvas.size.height * renderScale));
@@ -671,7 +679,7 @@ export function ParticleGridCanvas(): React.JSX.Element {
 
   React.useEffect(() => {
     let cancelled = false;
-    if (!sourceAsset) {
+    if (!sourceAsset || !sourceKey || !sourceUrl) {
       setDecodedSource(null);
       rendererRef.current?.clear(outputWidth, outputHeight);
       return () => {
@@ -679,25 +687,25 @@ export function ParticleGridCanvas(): React.JSX.Element {
       };
     }
 
-    void loadSourceImage(sourceAsset).then((image) => {
+    void loadSourceImage(sourceAsset, sourceUrl).then((image) => {
       if (!cancelled) {
-        setDecodedSource({ assetId: sourceAsset.id, image });
+        setDecodedSource({ image, sourceKey });
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [sourceAsset?.dataUrl, sourceAsset?.id]);
+  }, [sourceAsset?.id, sourceAsset?.resourceRef, sourceKey, sourceUrl]);
 
   React.useEffect(() => {
     const renderer = rendererRef.current;
-    if (!renderer || !sourceAsset || !settings || decodedSource?.assetId !== sourceAsset.id) {
+    if (!renderer || !sourceAsset || !settings || decodedSource?.sourceKey !== sourceKey) {
       renderer?.clear(outputWidth, outputHeight);
       return undefined;
     }
 
-    renderer.setSource(decodedSource.image, `${sourceAsset.id}:${sourceAsset.dataUrl}`);
+    renderer.setSource(decodedSource.image, sourceKey);
     renderer.render(settings);
     return undefined;
   }, [
@@ -728,8 +736,8 @@ export function ParticleGridCanvas(): React.JSX.Element {
     settings?.shrinkThreshold,
     settings?.softness,
     settings?.tintColor,
-    sourceAsset?.dataUrl,
     sourceAsset?.id,
+    sourceAsset?.resourceRef,
     sourceAsset?.transform?.flipHorizontal,
     sourceAsset?.transform?.flipVertical,
     sourceAsset?.transform?.rotationDeg,
@@ -746,77 +754,43 @@ export function ParticleGridCanvas(): React.JSX.Element {
   );
 }
 
-function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("Unable to encode Particle Grid output."))),
-      mimeType,
-      mimeType === "image/jpeg" ? 0.94 : undefined,
-    );
-  });
-}
+export const particleGridExportRenderer: ToolcraftProductExportRenderer = {
+  baseFileName: "particle-grid-effect",
+  async renderFrame({ context, frame, pixelRatio, state }) {
+    const sourceAsset = getSourceAsset(state);
+    const sourceImagePromise = sourceAsset
+      ? imageCache.get(sourceAsset.resourceRef)
+      : undefined;
 
-function downloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
+    if (!sourceAsset || !sourceImagePromise) {
+      throw new Error("Upload and load a source image before exporting.");
+    }
 
-export async function exportParticleGridImage({
-  reportProgress,
-  state,
-}: Pick<ToolcraftPanelActionContext, "reportProgress" | "state">): Promise<Blob> {
-  const sourceAsset = getSourceAsset(state);
-  if (!sourceAsset) {
-    throw new Error("Upload a source image before exporting.");
-  }
+    const sourceImage = await sourceImagePromise;
+    const pixelWidth = Math.max(1, Math.round(frame.width * pixelRatio));
+    const pixelHeight = Math.max(1, Math.round(frame.height * pixelRatio));
+    const shaderCanvas = document.createElement("canvas");
+    const renderer = new ParticleGridWebGlRenderer(shaderCanvas, {
+      preserveDrawingBuffer: true,
+    });
 
-  reportProgress(0.1);
-  const sourceImage = await loadSourceImage(sourceAsset);
-  const requestedFormat = String(state.values["export.image.format"] ?? "png");
-  const format = requestedFormat === "jpg" ? "jpg" : "png";
-  const mimeType = format === "jpg" ? "image/jpeg" : "image/png";
-  const includeBackground =
-    format === "jpg" || shouldIncludeToolcraftPreviewBackground({ state });
-  const background = getHexColor(state, "appearance.background", "#000000");
-  const imageResolution = String(state.values["export.image.resolution"] ?? "4k");
-
-  reportProgress(0.3);
-  const exportCanvas = createToolcraftPngExportCanvas({
-    background,
-    includeBackground: includeBackground,
-    resolution: imageResolution,
-    state,
-    render: ({ context, cssHeight, cssWidth, pixelHeight, pixelWidth }) => {
-      const shaderCanvas = document.createElement("canvas");
-      const renderer = new ParticleGridWebGlRenderer(shaderCanvas, {
-        preserveDrawingBuffer: true,
-      });
-      renderer.setSource(sourceImage, `${sourceAsset.id}:${sourceAsset.dataUrl}`);
+    try {
+      renderer.setSource(
+        sourceImage,
+        `${sourceAsset.id}:${sourceAsset.resourceRef}`,
+      );
       renderer.render(
         getRenderSettings(state, sourceAsset, pixelWidth, pixelHeight, false),
       );
-      context.drawImage(shaderCanvas, 0, 0, cssWidth, cssHeight);
+      context.drawImage(
+        shaderCanvas,
+        frame.x,
+        frame.y,
+        frame.width,
+        frame.height,
+      );
+    } finally {
       renderer.dispose();
-    },
-  });
-
-  reportProgress(0.72);
-  const blob = await canvasToBlob(exportCanvas, mimeType);
-  reportProgress(0.92);
-  downloadBlob(blob, `particle-grid-effect.${format}`);
-  reportProgress(1);
-  return blob;
-}
-
-export function handleParticleGridPanelAction(
-  context: ToolcraftPanelActionContext,
-): Promise<Blob> | void {
-  if (context.action.value !== "export.png") {
-    return undefined;
-  }
-  return exportParticleGridImage(context);
-}
+    }
+  },
+};

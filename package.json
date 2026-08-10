@@ -1,0 +1,8 @@
+{
+  "name": "toolcraft-neurotum",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix starter run dev",
+    "postinstall": "npm --prefix starter install"
+  }
+}
