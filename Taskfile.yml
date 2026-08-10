@@ -7,4 +7,4 @@ tasks:
     cmds:
       - >-
         npx --yes --package node@22.18.0 --package npm@10.9.3
-        --call 'npm install && npm run dev'
+        --call 'npm --prefix starter install && npm --prefix starter run dev'
