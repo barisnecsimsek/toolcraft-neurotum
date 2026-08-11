@@ -8,6 +8,20 @@ Particle Grid Effect is a single-image Toolcraft product that reconstructs an up
 
 ## Decision Trail
 
+### Iteration 8 — Dot pattern chance default
+
+- Request: Change the default Dot Pattern Chance to `0.02`.
+- Decision: Use `0.02` consistently in the schema, renderer fallback, performance scenario, and contract test so initial state and reset behavior match preview and export.
+- Verification: Two targeted schema/performance tests passed, the production Vite build passed, `git diff --check` passed, and the live browser showed Chance at `0.02` with no warnings or errors.
+
+### Iteration 7 — Particle width kill threshold
+
+- Request: Add an adjustable option that removes particles below a chosen width threshold.
+- Decision: Add `particle.killBelowWidth` as a neutral-by-default Particle Shape slider from 0 to 1. Compare it against luminance multiplied by Width gain before Minimum width and maximum-width clamping, so killed particles remain absent even when Minimum width is nonzero.
+- User-visible result: Raising `Kill below` progressively removes narrow/dark particles while leaving wider particles intact.
+- Performance intent: One uniform and one early fragment-shader comparison in the existing single pass.
+- Verification: Node 22 focused shader tests passed 5/5, two targeted schema/performance tests passed, the production Vite build passed, and `git diff --check` passed. Live browser verification confirmed one neutral-default Kill below slider, a visible output change at value 1, and no browser warnings or errors.
+
 ### Iteration 6 — Seamless rows and centered thinning
 
 - Request: Eliminate every visible seam between rows when row gap is fixed at zero, and make horizontal width changes visually symmetric instead of appearing anchored to one side.

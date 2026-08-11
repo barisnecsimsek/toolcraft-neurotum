@@ -40,6 +40,7 @@ uniform float uMaxColumnWidth;
 uniform float uColumnGap;
 uniform float uParticleWidth;
 uniform float uMinWidth;
+uniform float uKillBelowWidth;
 uniform vec4 uBackgroundColor;
 uniform int uColorMode;
 uniform vec4 uTintColor;
@@ -152,6 +153,9 @@ float buildParticleMask(
   float availableWidth = max(1.0 - uColumnGap, 0.001);
   float maximumWidth = min(uMaxColumnWidth, availableWidth);
   float rawWidth = luminance * uParticleWidth;
+  if (rawWidth < uKillBelowWidth) {
+    return 0.0;
+  }
   float barWidth = clamp(max(rawWidth, uMinWidth), 0.0, maximumWidth);
   float cellCenterX = (cellCoord.x + 0.5) / gridDims.x;
   float centeredX = (effectUv.x - cellCenterX) * gridDims.x;
@@ -276,6 +280,7 @@ type ParticleGridRenderSettings = {
   groupColor4: string;
   groupMode: number;
   includeBackground: boolean;
+  killBelowWidth: number;
   maxColumnWidth: number;
   minWidth: number;
   outputHeight: number;
@@ -305,6 +310,7 @@ type ParticleGridUniforms = {
   grainAmount: WebGLUniformLocation;
   grainScale: WebGLUniformLocation;
   grainSeed: WebGLUniformLocation;
+  killBelowWidth: WebGLUniformLocation;
   maxColumnWidth: WebGLUniformLocation;
   minWidth: WebGLUniformLocation;
   outputSize: WebGLUniformLocation;
@@ -462,7 +468,7 @@ function getRenderSettings(
     colorMode: state.values["particle.colorMode"] === "tint" ? 1 : 0,
     columnGap: clampNumber(state.values["particle.columnGap"], 0.05, 0, 0.5),
     columns: Math.round(clampNumber(state.values["particle.columns"], 80, 10, 200)),
-    dotChance: clampNumber(state.values["particle.dotChance"], 0.3, 0, 1),
+    dotChance: clampNumber(state.values["particle.dotChance"], 0.02, 0, 1),
     dotDensity: clampNumber(state.values["particle.dotDensity"], 3, 1, 8),
     dotPatternBackground: getHexColor(
       state,
@@ -484,6 +490,12 @@ function getRenderSettings(
           ? 1
           : 0,
     includeBackground,
+    killBelowWidth: clampNumber(
+      state.values["particle.killBelowWidth"],
+      0,
+      0,
+      1,
+    ),
     maxColumnWidth: clampNumber(state.values["particle.maxColumnWidth"], 0.9, 0.1, 1),
     minWidth: clampNumber(state.values["particle.minWidth"], 0, 0, 0.5),
     outputHeight,
@@ -566,6 +578,7 @@ export class ParticleGridWebGlRenderer {
       grainAmount: getUniform(gl, this.program, "uGrainAmount"),
       grainScale: getUniform(gl, this.program, "uGrainScale"),
       grainSeed: getUniform(gl, this.program, "uGrainSeed"),
+      killBelowWidth: getUniform(gl, this.program, "uKillBelowWidth"),
       maxColumnWidth: getUniform(gl, this.program, "uMaxColumnWidth"),
       minWidth: getUniform(gl, this.program, "uMinWidth"),
       outputSize: getUniform(gl, this.program, "uOutputSize"),
@@ -635,6 +648,7 @@ export class ParticleGridWebGlRenderer {
     gl.uniform1f(uniforms.maxColumnWidth, settings.maxColumnWidth);
     gl.uniform1f(uniforms.columnGap, settings.columnGap);
     gl.uniform1f(uniforms.particleWidth, settings.particleWidth);
+    gl.uniform1f(uniforms.killBelowWidth, settings.killBelowWidth);
     gl.uniform1f(uniforms.minWidth, settings.minWidth);
     setColor(uniforms.backgroundColor, settings.backgroundColor, settings.includeBackground ? 1 : 0);
     gl.uniform1i(uniforms.colorMode, settings.colorMode);
@@ -765,6 +779,7 @@ export function ParticleGridCanvas(): React.JSX.Element {
     settings?.grainScale,
     settings?.grainSeed,
     settings?.includeBackground,
+    settings?.killBelowWidth,
     settings?.maxColumnWidth,
     settings?.minWidth,
     settings?.particleWidth,

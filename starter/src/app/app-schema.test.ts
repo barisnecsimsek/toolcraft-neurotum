@@ -78,6 +78,12 @@ describe("Particle Grid Effect product contract", () => {
       min: 0.1,
       max: 3,
     });
+    expect(getControl("particle.killBelowWidth")).toMatchObject({
+      defaultValue: 0,
+      label: "Kill below",
+      min: 0,
+      max: 1,
+    });
     expect(getControl("particle.minWidth")).toMatchObject({ defaultValue: 0, max: 0.5 });
     expect(getControl("particle.shrinkThreshold")).toBeUndefined();
     expect(getControl("particle.maxShrink")).toBeUndefined();
@@ -106,7 +112,7 @@ describe("Particle Grid Effect product contract", () => {
   });
 
   it("dot pattern controls map the reference ranges", () => {
-    expect(getControl("particle.dotChance")).toMatchObject({ defaultValue: 0.3, max: 1 });
+    expect(getControl("particle.dotChance")).toMatchObject({ defaultValue: 0.02, max: 1 });
     expect(getControl("particle.dotPatternBackground")).toMatchObject({
       defaultValue: "#E6E6E6",
       type: "color",
@@ -219,6 +225,7 @@ describe("Particle Grid Effect product contract", () => {
     "perf: particle.maxColumnWidth drag stays responsive",
     "perf: particle.columnGap drag stays responsive",
     "perf: particle.width drag stays responsive",
+    "perf: particle.killBelowWidth drag stays responsive",
     "perf: particle.minWidth drag stays responsive",
     "perf: particle.softness drag stays responsive",
     "perf: particle.dotChance drag stays responsive",

@@ -3150,6 +3150,7 @@ describe("Toolcraft template app acceptance coverage", () => {
       "particle.maxColumnWidth",
       "particle.columnGap",
       "particle.width",
+      "particle.killBelowWidth",
       "particle.minWidth",
       "particle.softness",
       "particle.colorMode",

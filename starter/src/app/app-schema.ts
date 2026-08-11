@@ -107,6 +107,21 @@ export const appSchema = defineToolcraft({
               target: "particle.width",
               type: "slider",
             },
+            killBelowWidth: {
+              defaultValue: 0,
+              description:
+                "Removes particles whose luminance-derived width, after Width gain, is below this value. This overrides Minimum width.",
+              label: "Kill below",
+              max: 1,
+              min: 0,
+              orderRole: "detail",
+              performanceReason:
+                "Kill below adds one constant-cost width comparison in the fragment shader.",
+              performanceRole: "workload",
+              step: 0.01,
+              target: "particle.killBelowWidth",
+              type: "slider",
+            },
             minWidth: {
               defaultValue: 0,
               description: "Keeps dark cells visible by enforcing a minimum width.",
@@ -235,7 +250,7 @@ export const appSchema = defineToolcraft({
               type: "color",
             },
             dotChance: {
-              defaultValue: 0.3,
+              defaultValue: 0.02,
               description:
                 "Sets the deterministic chance that a bright cell receives a dot pattern.",
               label: "Chance",

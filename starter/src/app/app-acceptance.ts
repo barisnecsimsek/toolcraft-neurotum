@@ -493,6 +493,7 @@ const gridTargets = [
 
 const shapeTargets = [
   "particle.width",
+  "particle.killBelowWidth",
   "particle.minWidth",
   "particle.softness",
 ] as const;
@@ -572,7 +573,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
     componentType: "slider",
     evidence: "rendered-pixels" as const,
     expectedObservable:
-      "Changing Width gain, Minimum width, or Softness changes centered particle mask geometry.",
+      "Changing Width gain, Kill below, Minimum width, or Softness changes centered particle mask geometry.",
     fixture: "uploaded image containing dark, middle, and bright cells",
     id: target,
     kind: "control" as const,

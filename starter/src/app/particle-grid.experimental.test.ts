@@ -63,6 +63,23 @@ describe("Particle Grid grain experiment", () => {
     );
   });
 
+  it("kills particles below a configurable raw-width threshold", () => {
+    expect(getControl("particle.killBelowWidth")).toMatchObject({
+      defaultValue: 0,
+      label: "Kill below",
+      min: 0,
+      max: 1,
+    });
+    expect(particleGridFragmentShaderSource).toContain(
+      "if (rawWidth < uKillBelowWidth)",
+    );
+    expect(
+      particleGridFragmentShaderSource.indexOf("rawWidth < uKillBelowWidth"),
+    ).toBeLessThan(
+      particleGridFragmentShaderSource.indexOf("max(rawWidth, uMinWidth)"),
+    );
+  });
+
   it("publishes the experimental control sections inside Particle Grid", () => {
     const sectionTitles = appSchema.panels.controls?.sections.map(
       (section) => section.title,
