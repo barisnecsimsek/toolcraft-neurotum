@@ -122,6 +122,33 @@ export const appSchema = defineToolcraft({
               target: "particle.killBelowWidth",
               type: "slider",
             },
+            colorBelowEnabled: {
+              defaultValue: false,
+              description:
+                "Keeps particles below Kill below and replaces their color instead of removing them.",
+              label: "Color below",
+              orderRole: "detail",
+              performanceReason:
+                "Color below switches one fragment-shader threshold branch.",
+              performanceRole: "workload",
+              target: "particle.colorBelowEnabled",
+              type: "switch",
+            },
+            belowThresholdColor: {
+              defaultValue: "#FFFFFF",
+              description: "Sets the color used by particles below Kill below.",
+              label: "Below color",
+              orderRole: "color",
+              performanceReason:
+                "Below color updates one fragment-shader color uniform.",
+              performanceRole: "workload",
+              target: "particle.belowThresholdColor",
+              type: "color",
+              visibleWhen: {
+                equals: true,
+                target: "particle.colorBelowEnabled",
+              },
+            },
             minWidth: {
               defaultValue: 0,
               description: "Keeps dark cells visible by enforcing a minimum width.",

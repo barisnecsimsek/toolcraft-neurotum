@@ -71,12 +71,36 @@ describe("Particle Grid grain experiment", () => {
       max: 1,
     });
     expect(particleGridFragmentShaderSource).toContain(
-      "if (rawWidth < uKillBelowWidth)",
+      "if (isBelowKillThreshold(luminance) && uColorBelowEnabled == 0)",
     );
     expect(
-      particleGridFragmentShaderSource.indexOf("rawWidth < uKillBelowWidth"),
+      particleGridFragmentShaderSource.indexOf(
+        "isBelowKillThreshold(luminance) && uColorBelowEnabled == 0",
+      ),
     ).toBeLessThan(
       particleGridFragmentShaderSource.indexOf("max(rawWidth, uMinWidth)"),
+    );
+  });
+
+  it("can recolor below-threshold particles instead of killing them", () => {
+    expect(getControl("particle.colorBelowEnabled")).toMatchObject({
+      defaultValue: false,
+      label: "Color below",
+      type: "switch",
+    });
+    expect(getControl("particle.belowThresholdColor")).toMatchObject({
+      defaultValue: "#FFFFFF",
+      label: "Below color",
+      type: "color",
+    });
+    expect(particleGridFragmentShaderSource).toContain(
+      "isBelowKillThreshold(luminance) && uColorBelowEnabled == 0",
+    );
+    expect(particleGridFragmentShaderSource).toContain(
+      "vec4 applyBelowThresholdColor",
+    );
+    expect(particleGridFragmentShaderSource).toContain(
+      "uColorBelowEnabled == 1 && isBelowKillThreshold(luminance)",
     );
   });
 

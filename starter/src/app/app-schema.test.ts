@@ -84,6 +84,16 @@ describe("Particle Grid Effect product contract", () => {
       min: 0,
       max: 1,
     });
+    expect(getControl("particle.colorBelowEnabled")).toMatchObject({
+      defaultValue: false,
+      label: "Color below",
+      type: "switch",
+    });
+    expect(getControl("particle.belowThresholdColor")).toMatchObject({
+      defaultValue: "#FFFFFF",
+      label: "Below color",
+      type: "color",
+    });
     expect(getControl("particle.minWidth")).toMatchObject({ defaultValue: 0, max: 0.5 });
     expect(getControl("particle.shrinkThreshold")).toBeUndefined();
     expect(getControl("particle.maxShrink")).toBeUndefined();
@@ -226,6 +236,8 @@ describe("Particle Grid Effect product contract", () => {
     "perf: particle.columnGap drag stays responsive",
     "perf: particle.width drag stays responsive",
     "perf: particle.killBelowWidth drag stays responsive",
+    "perf: particle.colorBelowEnabled change stays responsive",
+    "perf: particle.belowThresholdColor change stays responsive",
     "perf: particle.minWidth drag stays responsive",
     "perf: particle.softness drag stays responsive",
     "perf: particle.dotChance drag stays responsive",

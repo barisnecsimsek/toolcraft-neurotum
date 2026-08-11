@@ -8,6 +8,14 @@ Particle Grid Effect is a single-image Toolcraft product that reconstructs an up
 
 ## Decision Trail
 
+### Iteration 9 — Optional below-threshold color
+
+- Request: Add an optional color treatment so particles below Kill below can remain visible in a selected color instead of being removed.
+- Decision: Add `particle.colorBelowEnabled` and conditional `particle.belowThresholdColor`. When disabled, the existing early kill remains unchanged. When enabled, below-threshold particles retain their luminance-derived or Minimum width geometry, bypass the kill, and receive the selected color after Dot Pattern but before Grain.
+- User-visible result: Particle Shape exposes a Color below toggle and shows Below color only while enabled.
+- Performance intent: Two uniforms and constant-cost threshold/color branches in the existing single fragment pass.
+- Verification: Node 22 focused shader tests passed 6/6, two targeted schema/performance tests passed, the production Vite build passed, and `git diff --check` passed. Live browser verification confirmed the color picker is hidden by default, appears when Color below is enabled, and produces a different rendered result than kill-only mode at threshold 1 with no browser warnings or errors.
+
 ### Iteration 8 — Dot pattern chance default
 
 - Request: Change the default Dot Pattern Chance to `0.02`.

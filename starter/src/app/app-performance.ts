@@ -36,6 +36,8 @@ const sliderDefinitions = [
 ] as const;
 
 const controlChangeDefinitions = [
+  { defaultValue: false, label: "Color below", max: true, min: false, target: "particle.colorBelowEnabled" },
+  { defaultValue: "#FFFFFF", label: "Below color", max: "#FF00FF", min: "#000000", target: "particle.belowThresholdColor" },
   { defaultValue: "original", label: "Color mode", max: "tint", min: "original", target: "particle.colorMode" },
   { defaultValue: "#FFFFFF", label: "Tint", max: "#FF00FF", min: "#000000", target: "particle.tintColor" },
   { defaultValue: "off", label: "Color grouping", max: "color", min: "off", target: "particle.groupMode" },

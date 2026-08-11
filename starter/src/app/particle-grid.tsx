@@ -41,6 +41,8 @@ uniform float uColumnGap;
 uniform float uParticleWidth;
 uniform float uMinWidth;
 uniform float uKillBelowWidth;
+uniform int uColorBelowEnabled;
+uniform vec4 uBelowThresholdColor;
 uniform vec4 uBackgroundColor;
 uniform int uColorMode;
 uniform vec4 uTintColor;
@@ -144,6 +146,10 @@ float applyGrainToLuminance(float luminance, vec2 effectUv) {
   return clamp(luminance + grainNoise(effectUv) * uGrainAmount, 0.0, 1.0);
 }
 
+bool isBelowKillThreshold(float luminance) {
+  return luminance * uParticleWidth < uKillBelowWidth;
+}
+
 float buildParticleMask(
   vec2 effectUv,
   vec2 cellCoord,
@@ -153,7 +159,7 @@ float buildParticleMask(
   float availableWidth = max(1.0 - uColumnGap, 0.001);
   float maximumWidth = min(uMaxColumnWidth, availableWidth);
   float rawWidth = luminance * uParticleWidth;
-  if (rawWidth < uKillBelowWidth) {
+  if (isBelowKillThreshold(luminance) && uColorBelowEnabled == 0) {
     return 0.0;
   }
   float barWidth = clamp(max(rawWidth, uMinWidth), 0.0, maximumWidth);
@@ -228,6 +234,13 @@ vec4 applyCellPattern(
   return mix(uDotPatternBackground, particleColor, dotMask);
 }
 
+vec4 applyBelowThresholdColor(vec4 color, float luminance) {
+  if (uColorBelowEnabled == 1 && isBelowKillThreshold(luminance)) {
+    return uBelowThresholdColor;
+  }
+  return color;
+}
+
 vec4 applyGrain(vec4 color, vec2 effectUv) {
   vec3 texturedColor = clamp(
     color.rgb + grainNoise(effectUv) * uGrainAmount,
@@ -257,6 +270,7 @@ void main() {
   float mask = buildParticleMask(effectUv, cellCoord, gridDims, luminance);
   vec4 particleColor = mapParticleColor(sampled, luminance);
   particleColor = applyCellPattern(particleColor, cellCoord, localPos, luminance);
+  particleColor = applyBelowThresholdColor(particleColor, luminance);
   particleColor = applyGrain(particleColor, effectUv);
   outColor = composeParticle(particleColor, mask);
 }
@@ -264,7 +278,9 @@ void main() {
 
 type ParticleGridRenderSettings = {
   backgroundColor: string;
+  belowThresholdColor: string;
   colorMode: number;
+  colorBelowEnabled: number;
   columnGap: number;
   columns: number;
   dotChance: number;
@@ -294,7 +310,9 @@ type ParticleGridRenderSettings = {
 
 type ParticleGridUniforms = {
   backgroundColor: WebGLUniformLocation;
+  belowThresholdColor: WebGLUniformLocation;
   colorMode: WebGLUniformLocation;
+  colorBelowEnabled: WebGLUniformLocation;
   columnGap: WebGLUniformLocation;
   dotChance: WebGLUniformLocation;
   dotDensity: WebGLUniformLocation;
@@ -465,7 +483,13 @@ function getRenderSettings(
 ): ParticleGridRenderSettings {
   return {
     backgroundColor: getHexColor(state, "appearance.background", "#000000"),
+    belowThresholdColor: getHexColor(
+      state,
+      "particle.belowThresholdColor",
+      "#FFFFFF",
+    ),
     colorMode: state.values["particle.colorMode"] === "tint" ? 1 : 0,
+    colorBelowEnabled: state.values["particle.colorBelowEnabled"] === true ? 1 : 0,
     columnGap: clampNumber(state.values["particle.columnGap"], 0.05, 0, 0.5),
     columns: Math.round(clampNumber(state.values["particle.columns"], 80, 10, 200)),
     dotChance: clampNumber(state.values["particle.dotChance"], 0.02, 0, 1),
@@ -562,7 +586,9 @@ export class ParticleGridWebGlRenderer {
 
     this.uniforms = {
       backgroundColor: getUniform(gl, this.program, "uBackgroundColor"),
+      belowThresholdColor: getUniform(gl, this.program, "uBelowThresholdColor"),
       colorMode: getUniform(gl, this.program, "uColorMode"),
+      colorBelowEnabled: getUniform(gl, this.program, "uColorBelowEnabled"),
       columnGap: getUniform(gl, this.program, "uColumnGap"),
       dotChance: getUniform(gl, this.program, "uDotChance"),
       dotDensity: getUniform(gl, this.program, "uDotDensity"),
@@ -649,6 +675,8 @@ export class ParticleGridWebGlRenderer {
     gl.uniform1f(uniforms.columnGap, settings.columnGap);
     gl.uniform1f(uniforms.particleWidth, settings.particleWidth);
     gl.uniform1f(uniforms.killBelowWidth, settings.killBelowWidth);
+    gl.uniform1i(uniforms.colorBelowEnabled, settings.colorBelowEnabled);
+    setColor(uniforms.belowThresholdColor, settings.belowThresholdColor);
     gl.uniform1f(uniforms.minWidth, settings.minWidth);
     setColor(uniforms.backgroundColor, settings.backgroundColor, settings.includeBackground ? 1 : 0);
     gl.uniform1i(uniforms.colorMode, settings.colorMode);
@@ -763,7 +791,9 @@ export function ParticleGridCanvas(): React.JSX.Element {
     outputWidth,
     renderScale,
     settings?.backgroundColor,
+    settings?.belowThresholdColor,
     settings?.colorMode,
+    settings?.colorBelowEnabled,
     settings?.columnGap,
     settings?.columns,
     settings?.dotChance,

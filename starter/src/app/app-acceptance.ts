@@ -492,10 +492,12 @@ const gridTargets = [
 ] as const;
 
 const shapeTargets = [
-  "particle.width",
-  "particle.killBelowWidth",
-  "particle.minWidth",
-  "particle.softness",
+  ["particle.width", "slider"],
+  ["particle.killBelowWidth", "slider"],
+  ["particle.colorBelowEnabled", "switch"],
+  ["particle.belowThresholdColor", "color"],
+  ["particle.minWidth", "slider"],
+  ["particle.softness", "slider"],
 ] as const;
 
 const colorTargets = [
@@ -565,15 +567,15 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
     target,
     userAction: "Drag the corresponding Grid slider and observe live output pixels.",
   })),
-  ...shapeTargets.map((target) => ({
+  ...shapeTargets.map(([target, componentType]) => ({
     automated: true,
     automatedTestName: "particle shape controls map the reference ranges",
     browser: true,
     browserTestName: "browser: particle shape controls change rendered masks",
-    componentType: "slider",
+    componentType,
     evidence: "rendered-pixels" as const,
     expectedObservable:
-      "Changing Width gain, Kill below, Minimum width, or Softness changes centered particle mask geometry.",
+      "Changing Width gain, Kill below, Color below, Below color, Minimum width, or Softness changes centered particle mask geometry and threshold treatment.",
     fixture: "uploaded image containing dark, middle, and bright cells",
     id: target,
     kind: "control" as const,
