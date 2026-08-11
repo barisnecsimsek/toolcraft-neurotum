@@ -32,6 +32,9 @@ const sliderDefinitions = [
   { defaultValue: 0.3, label: "Chance", max: 1, min: 0, target: "particle.dotChance", workload: true },
   { defaultValue: 3, label: "Density", max: 8, min: 1, target: "particle.dotDensity", workload: true },
   { defaultValue: 0.5, label: "Dot size", max: 0.9, min: 0.1, target: "particle.dotSize", workload: true },
+  { defaultValue: 0, label: "Grain amount", max: 0.5, min: 0, target: "particle.grainAmount", workload: true },
+  { defaultValue: 1, label: "Grain scale", max: 8, min: 0.25, target: "particle.grainScale", workload: true },
+  { defaultValue: 1, label: "Grain seed", max: 100, min: 1, target: "particle.grainSeed", workload: true },
 ] as const;
 
 const controlChangeDefinitions = [

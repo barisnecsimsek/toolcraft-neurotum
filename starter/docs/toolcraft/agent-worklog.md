@@ -8,6 +8,24 @@ Particle Grid Effect is a single-image Toolcraft product that reconstructs an up
 
 ## Decision Trail
 
+### Iteration 4 — Single-pass experimental Particle Grid grain
+
+- Request: Keep one Particle Grid effect during visual experimentation; do not add pipeline infrastructure or a base-effect selector. After an initial broader experiment, keep Grain and remove Dither and Distortion for now.
+- Task type: Tier 3 custom WebGL shader and schema-control extension within the existing single-image product.
+- User-visible result: Particle Grid now exposes one Grain section. Grain can influence luminance-driven particle geometry and color while the product remains one effect, one canvas, one shader draw, and one preview/export renderer.
+- Source/reference checked: The complete current Particle Grid GLSL, state resolver, WebGL resource lifecycle, preview component, export renderer, schema, focused tests, and live browser output.
+- Reference inputs: The existing Particle Grid implementation; no new external visual reference was supplied.
+- Docs/contracts read: `AGENTS.md`, `workflow.md`, `core/runtime-boundary.md`, `core/performance.md`, `core/control-selection.md`, `core/layout.md`, `core/setup-export.md`, `core/media-upload.md`, `assembly-workflow.md`, `decision-contract.md`, `schema-reference.md`, `component-rules.md`, `renderer-technique.md`, and `performance.md`.
+- Contract rules applied: `runtime-shell-required`, `canvas-no-app-ui`, `canvas-surface-preserved`, `controls-product-coverage`, `output-export-required`, `renderer-technique-inventory`, `acceptance-product-observable`, `performance-coverage-levels`, and `workflow-required`.
+- View interaction intent: `non-spatial`; grain edits the flat image transform without introducing a 3D scene or canvas manipulation.
+- Interaction ownership: Every experimental parameter is panel-owned; canvas interaction remains limited to Toolcraft pan/zoom and source drop.
+- Decision: Keep the existing Particle Grid renderer and split its GLSL into named internal functions. Grain affects both luminance geometry and particle color. Its amount defaults to zero so the existing appearance remains the baseline; Dither and Distortion were removed from shader state and controls at the user's direction.
+- Alternatives rejected: A base-effect registry, generic pipeline, post-effect abstraction, framebuffer chain, and reusable effect stages because no genuinely distinct second visual identity exists yet.
+- State/output mapping: `particle.grain*` changes deterministic luminance and particle-color texture. Preview and export continue through the same `ParticleGridWebGlRenderer.render` path.
+- Performance intent: Ordinary functional experimentation; no measured performance iteration or full audit was requested or run.
+- Verification: Node 22 focused Vitest passed 3/3; the production Vite build passed; a real WebGL2 browser render accepted an uploaded fixture; Grain produced a distinct canvas screenshot hash; Dither and Distortion controls were absent; browser warnings/errors were empty; `git diff --check` passed. Repository-wide TypeScript remains blocked by pre-existing protected acceptance/performance contract drift, while filtered output contains no new errors in `particle-grid.tsx`, `app-schema.ts`, or the new focused test.
+- Risks: Grain intentionally affects geometry and color together rather than behaving as an isolated post-effect; visual tuning remains the next step.
+
 ### Iteration 3 — Root install and runtime compatibility repair
 
 - Request: "NPM install çalışmıyor. task run yapınca siteyi göremiyorum."
@@ -65,8 +83,8 @@ Particle Grid Effect is a single-image Toolcraft product that reconstructs an up
 
 ### Renderer
 
-- Decision: WebGL2 preview and export renderer porting the supplied WGSL Particle Grid fragment math with a cached source texture.
-- Reason: Cell sampling, luminance geometry, grouping, dots, and compositing are dense pixel work that map directly to one GPU pass.
+- Decision: One WebGL2 preview/export renderer with named internal GLSL functions for sampling, grid construction, geometry, color, dot pattern, grain, and composition.
+- Reason: The coupled creative operations are dense pixel work and currently benefit from sharing intermediate luminance, coordinates, and color inside one GPU pass.
 - Evidence: Renderer Technique Decision Matrix, Renderer Layer Inventory, and Render Pipeline Inventory in `docs/plans/particle-grid-effect.md`; typed renderer contracts and schema tests cover the port.
 
 ### Timeline
@@ -83,8 +101,8 @@ Particle Grid Effect is a single-image Toolcraft product that reconstructs an up
 
 ### Controls
 
-- Decision: Source, Grid, Particle Shape, Color Mapping, Dot Pattern, Background, and Image Export sections using only built-in controls.
-- Reason: FileDrop, slider, switch, color, select, and panelActions exactly fit all 22 reference properties plus Toolcraft delivery controls.
+- Decision: Source, Grid, Particle Shape, Color Mapping, Dot Pattern, Grain, Background, and Image Export sections using only built-in controls.
+- Reason: The experimental shader parameters remain ordinary numeric values; built-in sliders preserve fast visual iteration without custom UI or pipeline controls.
 - Evidence: Control inventory in `docs/plans/particle-grid-effect.md`; app acceptance and performance contracts cover every visible target.
 
 ### Export

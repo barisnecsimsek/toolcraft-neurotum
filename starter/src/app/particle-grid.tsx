@@ -25,7 +25,7 @@ void main() {
 }
 `;
 
-const fragmentShaderSource = `#version 300 es
+export const particleGridFragmentShaderSource = `#version 300 es
 precision highp float;
 precision highp int;
 
@@ -58,6 +58,9 @@ uniform float uDotDensity;
 uniform float uDotSize;
 uniform int uRotationQuarterTurns;
 uniform vec2 uFlip;
+uniform float uGrainAmount;
+uniform float uGrainScale;
+uniform float uGrainSeed;
 
 vec2 coverUv(vec2 outputUv) {
   vec2 orientedSize =
@@ -134,45 +137,48 @@ float rgbSaturation(vec3 rgb) {
   return maxC < 0.001 ? 0.0 : (maxC - minC) / maxC;
 }
 
-void main() {
-  vec2 gridDims = max(uGridDims, vec2(1.0));
-  vec2 cellCoord = floor(vUv * gridDims);
-  vec2 centerUv = (cellCoord + vec2(0.5)) / gridDims;
-  vec2 localPos = fract(vUv * gridDims);
-  vec4 sampled = sampleInput(centerUv);
-  float lum = dot(sampled.rgb, vec3(0.299, 0.587, 0.114));
+float grainNoise(vec2 effectUv) {
+  vec2 grainCoord = floor(effectUv * uOutputSize / max(uGrainScale, 0.25));
+  return hash21(grainCoord + vec2(uGrainSeed * 19.19, uGrainSeed * 73.73)) - 0.5;
+}
 
+float applyGrainToLuminance(float luminance, vec2 effectUv) {
+  return clamp(luminance + grainNoise(effectUv) * uGrainAmount, 0.0, 1.0);
+}
+
+float buildParticleMask(vec2 localPos, float luminance) {
   float effectiveMaxWidth = max(uMaxColumnWidth - uColumnGap, 0.001);
-  float rawWidth = lum * uParticleWidth;
+  float rawWidth = luminance * uParticleWidth;
   float barWidth = max(rawWidth, uMinWidth);
-
   float heightFactor = 1.0;
+
   if (uShrinkThreshold > 0.001) {
     float t = clamp(rawWidth / uShrinkThreshold, 0.0, 1.0);
     heightFactor = mix(1.0 - uMaxShrink, 1.0, t);
   }
 
   float halfBarWidth = barWidth * effectiveMaxWidth * 0.5;
-  float availableHeight = 1.0 - uRowGap;
-  float halfBarHeight = availableHeight * heightFactor * 0.5;
+  float halfBarHeight = (1.0 - uRowGap) * heightFactor * 0.5;
   float edgeWidth = uSoftness * 0.5 + 0.001;
-  float hMask = 1.0 - smoothstep(
+  float horizontal = 1.0 - smoothstep(
     halfBarWidth - edgeWidth,
     halfBarWidth + edgeWidth,
     abs(localPos.x - 0.5)
   );
-  float vMask = 1.0 - smoothstep(
+  float vertical = 1.0 - smoothstep(
     halfBarHeight - edgeWidth,
     halfBarHeight + edgeWidth,
     abs(localPos.y - 0.5)
   );
-  float mask = hMask * vMask;
+  return horizontal * vertical;
+}
 
-  int groupIndex = int(clamp(floor(lum * 4.0), 0.0, 3.0));
+int classifyColorGroup(vec3 sampledColor, float luminance) {
+  int groupIndex = int(clamp(floor(luminance * 4.0), 0.0, 3.0));
   if (uGroupMode == 2) {
-    float saturation = rgbSaturation(sampled.rgb);
+    float saturation = rgbSaturation(sampledColor);
     if (saturation >= 0.15) {
-      float hue = rgbToHue(sampled.rgb);
+      float hue = rgbToHue(sampledColor);
       if (hue < 0.08 || hue >= 0.83) {
         groupIndex = 0;
       } else if (hue < 0.2) {
@@ -184,41 +190,79 @@ void main() {
       }
     }
   }
+  return groupIndex;
+}
 
-  vec4 particleColor;
+vec4 mapParticleColor(vec4 sampled, float luminance) {
+  int groupIndex = classifyColorGroup(sampled.rgb, luminance);
   if (uGroupMode == 0) {
-    particleColor = uColorMode == 0 ? sampled : uTintColor * sampled.a;
-  } else if (groupIndex == 0) {
-    particleColor = uGroupColor1;
-  } else if (groupIndex == 1) {
-    particleColor = uGroupColor2;
-  } else if (groupIndex == 2) {
-    particleColor = uGroupColor3;
-  } else {
-    particleColor = uGroupColor4;
+    return uColorMode == 0 ? sampled : uTintColor * sampled.a;
   }
+  if (groupIndex == 0) {
+    return uGroupColor1;
+  }
+  if (groupIndex == 1) {
+    return uGroupColor2;
+  }
+  if (groupIndex == 2) {
+    return uGroupColor3;
+  }
+  return uGroupColor4;
+}
 
+vec4 applyCellPattern(
+  vec4 particleColor,
+  vec2 cellCoord,
+  vec2 localPos,
+  float luminance
+) {
   float cellRand = hash21(cellCoord + vec2(17.3, 41.7));
-  bool hasDotPattern = lum >= 0.5 && cellRand < uDotChance;
-  vec4 finalParticleColor = particleColor;
-
-  if (hasDotPattern) {
-    vec2 dotGridPos = fract(localPos * uDotDensity);
-    float distanceToCenter = length(dotGridPos - vec2(0.5));
-    float dotRadius = uDotSize * 0.5;
-    float dotMask = 1.0 - smoothstep(
-      dotRadius - 0.03,
-      dotRadius + 0.03,
-      distanceToCenter
-    );
-    finalParticleColor = mix(uDotPatternBackground, particleColor, dotMask);
+  if (luminance < 0.5 || cellRand >= uDotChance) {
+    return particleColor;
   }
 
-  vec4 composed = mix(uBackgroundColor, finalParticleColor, mask);
-  outColor = vec4(
-    composed.rgb,
-    mix(uBackgroundColor.a, finalParticleColor.a, mask)
+  vec2 dotGridPos = fract(localPos * uDotDensity);
+  float distanceToCenter = length(dotGridPos - vec2(0.5));
+  float dotRadius = uDotSize * 0.5;
+  float dotMask = 1.0 - smoothstep(
+    dotRadius - 0.03,
+    dotRadius + 0.03,
+    distanceToCenter
   );
+  return mix(uDotPatternBackground, particleColor, dotMask);
+}
+
+vec4 applyGrain(vec4 color, vec2 effectUv) {
+  vec3 texturedColor = clamp(
+    color.rgb + grainNoise(effectUv) * uGrainAmount,
+    0.0,
+    1.0
+  );
+  return vec4(texturedColor, color.a);
+}
+
+vec4 composeParticle(vec4 particleColor, float mask) {
+  vec4 composed = mix(uBackgroundColor, particleColor, mask);
+  return vec4(
+    composed.rgb,
+    mix(uBackgroundColor.a, particleColor.a, mask)
+  );
+}
+
+void main() {
+  vec2 gridDims = max(uGridDims, vec2(1.0));
+  vec2 effectUv = vUv;
+  vec2 cellCoord = floor(effectUv * gridDims);
+  vec2 centerUv = (cellCoord + vec2(0.5)) / gridDims;
+  vec2 localPos = fract(effectUv * gridDims);
+  vec4 sampled = sampleInput(centerUv);
+  float sourceLuminance = dot(sampled.rgb, vec3(0.299, 0.587, 0.114));
+  float luminance = applyGrainToLuminance(sourceLuminance, effectUv);
+  float mask = buildParticleMask(localPos, luminance);
+  vec4 particleColor = mapParticleColor(sampled, luminance);
+  particleColor = applyCellPattern(particleColor, cellCoord, localPos, luminance);
+  particleColor = applyGrain(particleColor, effectUv);
+  outColor = composeParticle(particleColor, mask);
 }
 `;
 
@@ -231,6 +275,9 @@ type ParticleGridRenderSettings = {
   dotDensity: number;
   dotPatternBackground: string;
   dotSize: number;
+  grainAmount: number;
+  grainScale: number;
+  grainSeed: number;
   groupColor1: string;
   groupColor2: string;
   groupColor3: string;
@@ -266,6 +313,9 @@ type ParticleGridUniforms = {
   groupColor3: WebGLUniformLocation;
   groupColor4: WebGLUniformLocation;
   groupMode: WebGLUniformLocation;
+  grainAmount: WebGLUniformLocation;
+  grainScale: WebGLUniformLocation;
+  grainSeed: WebGLUniformLocation;
   maxColumnWidth: WebGLUniformLocation;
   maxShrink: WebGLUniformLocation;
   minWidth: WebGLUniformLocation;
@@ -307,7 +357,11 @@ function compileShader(
 
 function createProgram(gl: WebGL2RenderingContext): WebGLProgram {
   const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-  const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+  const fragmentShader = compileShader(
+    gl,
+    gl.FRAGMENT_SHADER,
+    particleGridFragmentShaderSource,
+  );
   const program = gl.createProgram();
 
   if (!program) {
@@ -430,6 +484,9 @@ function getRenderSettings(
       "#E6E6E6",
     ),
     dotSize: clampNumber(state.values["particle.dotSize"], 0.5, 0.1, 0.9),
+    grainAmount: clampNumber(state.values["particle.grainAmount"], 0, 0, 0.5),
+    grainScale: clampNumber(state.values["particle.grainScale"], 1, 0.25, 8),
+    grainSeed: Math.round(clampNumber(state.values["particle.grainSeed"], 1, 1, 100)),
     groupColor1: getHexColor(state, "particle.groupColor1", "#E63326"),
     groupColor2: getHexColor(state, "particle.groupColor2", "#F2991A"),
     groupColor3: getHexColor(state, "particle.groupColor3", "#33B34D"),
@@ -528,6 +585,9 @@ export class ParticleGridWebGlRenderer {
       groupColor3: getUniform(gl, this.program, "uGroupColor3"),
       groupColor4: getUniform(gl, this.program, "uGroupColor4"),
       groupMode: getUniform(gl, this.program, "uGroupMode"),
+      grainAmount: getUniform(gl, this.program, "uGrainAmount"),
+      grainScale: getUniform(gl, this.program, "uGrainScale"),
+      grainSeed: getUniform(gl, this.program, "uGrainSeed"),
       maxColumnWidth: getUniform(gl, this.program, "uMaxColumnWidth"),
       maxShrink: getUniform(gl, this.program, "uMaxShrink"),
       minWidth: getUniform(gl, this.program, "uMinWidth"),
@@ -613,6 +673,9 @@ export class ParticleGridWebGlRenderer {
     setColor(uniforms.groupColor2, settings.groupColor2);
     setColor(uniforms.groupColor3, settings.groupColor3);
     setColor(uniforms.groupColor4, settings.groupColor4);
+    gl.uniform1f(uniforms.grainAmount, settings.grainAmount);
+    gl.uniform1f(uniforms.grainScale, settings.grainScale);
+    gl.uniform1f(uniforms.grainSeed, settings.grainSeed);
     gl.uniform1f(uniforms.dotChance, settings.dotChance);
     setColor(uniforms.dotPatternBackground, settings.dotPatternBackground);
     gl.uniform1f(uniforms.dotDensity, settings.dotDensity);
@@ -726,6 +789,9 @@ export function ParticleGridCanvas(): React.JSX.Element {
     settings?.groupColor3,
     settings?.groupColor4,
     settings?.groupMode,
+    settings?.grainAmount,
+    settings?.grainScale,
+    settings?.grainSeed,
     settings?.includeBackground,
     settings?.maxColumnWidth,
     settings?.maxShrink,

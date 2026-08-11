@@ -318,6 +318,60 @@ export const appSchema = defineToolcraft({
         },
         {
           controls: {
+            grainAmount: {
+              applicability: { mode: "always" },
+              defaultValue: 0,
+              description:
+                "Adds deterministic texture to luminance, particle size, and particle color.",
+              label: "Amount",
+              max: 0.5,
+              min: 0,
+              orderRole: "strength",
+              performanceReason:
+                "Grain amount enables one deterministic hash used by geometry and color.",
+              performanceRole: "workload",
+              sliderValueKind: "continuous",
+              step: 0.01,
+              target: "particle.grainAmount",
+              type: "slider",
+            },
+            grainScale: {
+              applicability: { mode: "always" },
+              defaultValue: 1,
+              description: "Controls the size of the deterministic grain texture.",
+              label: "Scale",
+              max: 8,
+              min: 0.25,
+              orderRole: "detail",
+              performanceReason:
+                "Grain scale changes only hash coordinates in the fragment shader.",
+              performanceRole: "workload",
+              sliderValueKind: "continuous",
+              step: 0.25,
+              target: "particle.grainScale",
+              type: "slider",
+            },
+            grainSeed: {
+              applicability: { mode: "always" },
+              defaultValue: 1,
+              description: "Chooses a repeatable grain arrangement.",
+              label: "Seed",
+              max: 100,
+              min: 1,
+              orderRole: "detail",
+              performanceReason:
+                "Seed changes a constant-cost deterministic hash offset.",
+              performanceRole: "workload",
+              sliderValueKind: "continuous",
+              step: 1,
+              target: "particle.grainSeed",
+              type: "slider",
+            },
+          },
+          title: "Grain",
+        },
+        {
+          controls: {
             includeBackground: {
               defaultValue: true,
               description: "Includes the selected background in preview and image export.",
