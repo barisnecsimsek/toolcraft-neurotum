@@ -38,11 +38,8 @@ uniform vec2 uOutputSize;
 uniform vec2 uGridDims;
 uniform float uMaxColumnWidth;
 uniform float uColumnGap;
-uniform float uRowGap;
 uniform float uParticleWidth;
 uniform float uMinWidth;
-uniform float uShrinkThreshold;
-uniform float uMaxShrink;
 uniform vec4 uBackgroundColor;
 uniform int uColorMode;
 uniform vec4 uTintColor;
@@ -146,31 +143,26 @@ float applyGrainToLuminance(float luminance, vec2 effectUv) {
   return clamp(luminance + grainNoise(effectUv) * uGrainAmount, 0.0, 1.0);
 }
 
-float buildParticleMask(vec2 localPos, float luminance) {
-  float effectiveMaxWidth = max(uMaxColumnWidth - uColumnGap, 0.001);
+float buildParticleMask(
+  vec2 effectUv,
+  vec2 cellCoord,
+  vec2 gridDims,
+  float luminance
+) {
+  float availableWidth = max(1.0 - uColumnGap, 0.001);
+  float maximumWidth = min(uMaxColumnWidth, availableWidth);
   float rawWidth = luminance * uParticleWidth;
-  float barWidth = max(rawWidth, uMinWidth);
-  float heightFactor = 1.0;
-
-  if (uShrinkThreshold > 0.001) {
-    float t = clamp(rawWidth / uShrinkThreshold, 0.0, 1.0);
-    heightFactor = mix(1.0 - uMaxShrink, 1.0, t);
-  }
-
-  float halfBarWidth = barWidth * effectiveMaxWidth * 0.5;
-  float halfBarHeight = (1.0 - uRowGap) * heightFactor * 0.5;
-  float edgeWidth = uSoftness * 0.5 + 0.001;
-  float horizontal = 1.0 - smoothstep(
+  float barWidth = clamp(max(rawWidth, uMinWidth), 0.0, maximumWidth);
+  float cellCenterX = (cellCoord.x + 0.5) / gridDims.x;
+  float centeredX = (effectUv.x - cellCenterX) * gridDims.x;
+  float halfBarWidth = barWidth * 0.5;
+  float halfPixelInCell = 0.5 * gridDims.x / max(uOutputSize.x, 1.0);
+  float edgeWidth = max(uSoftness * 0.5, halfPixelInCell);
+  return 1.0 - smoothstep(
     halfBarWidth - edgeWidth,
     halfBarWidth + edgeWidth,
-    abs(localPos.x - 0.5)
+    abs(centeredX)
   );
-  float vertical = 1.0 - smoothstep(
-    halfBarHeight - edgeWidth,
-    halfBarHeight + edgeWidth,
-    abs(localPos.y - 0.5)
-  );
-  return horizontal * vertical;
 }
 
 int classifyColorGroup(vec3 sampledColor, float luminance) {
@@ -258,7 +250,7 @@ void main() {
   vec4 sampled = sampleInput(centerUv);
   float sourceLuminance = dot(sampled.rgb, vec3(0.299, 0.587, 0.114));
   float luminance = applyGrainToLuminance(sourceLuminance, effectUv);
-  float mask = buildParticleMask(localPos, luminance);
+  float mask = buildParticleMask(effectUv, cellCoord, gridDims, luminance);
   vec4 particleColor = mapParticleColor(sampled, luminance);
   particleColor = applyCellPattern(particleColor, cellCoord, localPos, luminance);
   particleColor = applyGrain(particleColor, effectUv);
@@ -285,14 +277,11 @@ type ParticleGridRenderSettings = {
   groupMode: number;
   includeBackground: boolean;
   maxColumnWidth: number;
-  maxShrink: number;
   minWidth: number;
   outputHeight: number;
   outputWidth: number;
   particleWidth: number;
-  rowGap: number;
   rows: number;
-  shrinkThreshold: number;
   softness: number;
   sourceAsset: ToolcraftImageAsset;
   tintColor: string;
@@ -317,13 +306,10 @@ type ParticleGridUniforms = {
   grainScale: WebGLUniformLocation;
   grainSeed: WebGLUniformLocation;
   maxColumnWidth: WebGLUniformLocation;
-  maxShrink: WebGLUniformLocation;
   minWidth: WebGLUniformLocation;
   outputSize: WebGLUniformLocation;
   particleWidth: WebGLUniformLocation;
   rotationQuarterTurns: WebGLUniformLocation;
-  rowGap: WebGLUniformLocation;
-  shrinkThreshold: WebGLUniformLocation;
   softness: WebGLUniformLocation;
   source: WebGLUniformLocation;
   sourceSize: WebGLUniformLocation;
@@ -499,19 +485,11 @@ function getRenderSettings(
           : 0,
     includeBackground,
     maxColumnWidth: clampNumber(state.values["particle.maxColumnWidth"], 0.9, 0.1, 1),
-    maxShrink: clampNumber(state.values["particle.maxShrink"], 0.7, 0, 1),
     minWidth: clampNumber(state.values["particle.minWidth"], 0, 0, 0.5),
     outputHeight,
     outputWidth,
-    particleWidth: clampNumber(state.values["particle.width"], 1, 0.1, 1),
-    rowGap: clampNumber(state.values["particle.rowGap"], 0, 0, 0.9),
+    particleWidth: clampNumber(state.values["particle.width"], 1, 0.1, 3),
     rows: Math.round(clampNumber(state.values["particle.rows"], 30, 5, 150)),
-    shrinkThreshold: clampNumber(
-      state.values["particle.shrinkThreshold"],
-      0.3,
-      0,
-      1,
-    ),
     softness: clampNumber(state.values["particle.softness"], 0.02, 0, 0.5),
     sourceAsset,
     tintColor: getHexColor(state, "particle.tintColor", "#FFFFFF"),
@@ -589,13 +567,10 @@ export class ParticleGridWebGlRenderer {
       grainScale: getUniform(gl, this.program, "uGrainScale"),
       grainSeed: getUniform(gl, this.program, "uGrainSeed"),
       maxColumnWidth: getUniform(gl, this.program, "uMaxColumnWidth"),
-      maxShrink: getUniform(gl, this.program, "uMaxShrink"),
       minWidth: getUniform(gl, this.program, "uMinWidth"),
       outputSize: getUniform(gl, this.program, "uOutputSize"),
       particleWidth: getUniform(gl, this.program, "uParticleWidth"),
       rotationQuarterTurns: getUniform(gl, this.program, "uRotationQuarterTurns"),
-      rowGap: getUniform(gl, this.program, "uRowGap"),
-      shrinkThreshold: getUniform(gl, this.program, "uShrinkThreshold"),
       softness: getUniform(gl, this.program, "uSoftness"),
       source: getUniform(gl, this.program, "uSource"),
       sourceSize: getUniform(gl, this.program, "uSourceSize"),
@@ -659,11 +634,8 @@ export class ParticleGridWebGlRenderer {
     gl.uniform2f(uniforms.gridDims, settings.columns, settings.rows);
     gl.uniform1f(uniforms.maxColumnWidth, settings.maxColumnWidth);
     gl.uniform1f(uniforms.columnGap, settings.columnGap);
-    gl.uniform1f(uniforms.rowGap, settings.rowGap);
     gl.uniform1f(uniforms.particleWidth, settings.particleWidth);
     gl.uniform1f(uniforms.minWidth, settings.minWidth);
-    gl.uniform1f(uniforms.shrinkThreshold, settings.shrinkThreshold);
-    gl.uniform1f(uniforms.maxShrink, settings.maxShrink);
     setColor(uniforms.backgroundColor, settings.backgroundColor, settings.includeBackground ? 1 : 0);
     gl.uniform1i(uniforms.colorMode, settings.colorMode);
     setColor(uniforms.tintColor, settings.tintColor);
@@ -794,12 +766,9 @@ export function ParticleGridCanvas(): React.JSX.Element {
     settings?.grainSeed,
     settings?.includeBackground,
     settings?.maxColumnWidth,
-    settings?.maxShrink,
     settings?.minWidth,
     settings?.particleWidth,
-    settings?.rowGap,
     settings?.rows,
-    settings?.shrinkThreshold,
     settings?.softness,
     settings?.tintColor,
     sourceAsset?.id,

@@ -8,6 +8,24 @@ Particle Grid Effect is a single-image Toolcraft product that reconstructs an up
 
 ## Decision Trail
 
+### Iteration 6 — Seamless rows and centered thinning
+
+- Request: Eliminate every visible seam between rows when row gap is fixed at zero, and make horizontal width changes visually symmetric instead of appearing anchored to one side.
+- Root cause: The removed Row gap control was not the only vertical-spacing path. `shrinkThreshold` and `maxShrink` still reduced particle height inside each row, while a subpixel fixed edge width could make centered horizontal changes rasterize unevenly at high zoom.
+- Decision: Remove vertical height shrink and its two controls so every particle mask spans its full row. Compute horizontal distance from an explicit global column center and enforce at least half a physical pixel of symmetric edge coverage.
+- User-visible result: Rows cannot expose background seams through particle geometry, and luminance-driven width expands or contracts around the same column center on both sides.
+- State/output mapping: `particle.width`, `particle.minWidth`, `particle.maxColumnWidth`, `particle.columnGap`, and `particle.softness` now affect only the centered horizontal mask. Preview and export share this shader path.
+- Verification: Node 22 focused shader tests passed 4/4, three targeted schema/performance tests passed, the production Vite build passed, and `git diff --check` passed. Live browser testing at increased zoom with Maximum width 1, Column gap 0, and Softness 0 showed continuous full-height rows, centered width changes, no removed shrink controls, and no browser warnings or errors.
+
+### Iteration 5 — Connectable particle columns
+
+- Request: Fix row gap permanently at zero, remove its control, and make the maximum horizontal particle width genuinely capable of connecting neighboring columns while remaining adjustable.
+- User-visible result: Row gap is no longer shown. Grid now exposes `Maximum width` and `Column gap`, while Particle Shape exposes `Width gain`; setting Maximum width to 1, Column gap to 0, and raising Width gain lets bright particles fill their cells and meet the next column.
+- Decision: Treat Maximum width as an absolute cell-width cap instead of multiplying every luminance-derived width by it. Column gap limits the available cap, and Width gain controls how quickly luminance reaches that cap. Remove row-gap state and its shader uniform so vertical row spacing is always zero before the existing luminance-driven height shrink.
+- State/output mapping: `particle.maxColumnWidth` caps horizontal coverage, `particle.columnGap` reserves horizontal empty space, and `particle.width` scales luminance before the cap. Preview and export share the same fragment-shader geometry.
+- Performance intent: Constant-cost arithmetic changes in the existing fragment pass; no additional render pass or framebuffer.
+- Verification: Node 22 focused Vitest passed 4/4, the production Vite build passed, and `git diff --check` passed. Live WebGL verification confirmed no Row gap control, Maximum width = 1, Column gap = 0, and Width gain = 3; bright source regions filled contiguous horizontal cells with no browser warnings or errors.
+
 ### Iteration 4 — Single-pass experimental Particle Grid grain
 
 - Request: Keep one Particle Grid effect during visual experimentation; do not add pipeline infrastructure or a base-effect selector. After an initial broader experiment, keep Grain and remove Dither and Distortion for now.

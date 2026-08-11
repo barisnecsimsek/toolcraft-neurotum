@@ -386,30 +386,34 @@ export const appTransferMode: ToolcraftTransferMode = {
     {
       acceptanceId: "particle.columns",
       behaviorEvidence:
-        "defineProperties exposes Columns, Rows, Max Column Width, Column Gap, and Row Gap with live numeric ranges.",
+        "The current Grid exposes Columns, Rows, Maximum width, and Column gap; vertical row spacing is fixed at zero.",
       featureName: "Grid controls",
       id: "grid-controls",
       referenceBehavior:
         "Users tune sampling density and horizontal/vertical cell spacing.",
       sourceEvidence:
         "The reference property block defines columns, rows, maxColumnWidth, columnGap, and rowGap; fs_main consumes all five.",
-      status: "ported",
+      status: "intentionally-changed",
       toolcraftMapping:
-        "The Grid section maps five built-in sliders one-to-one to particle-grid uniforms.",
+        "The Grid section maps four built-in sliders to particle-grid uniforms and omits Row gap.",
+      userApprovedChangeReason:
+        "The user explicitly requested that Row gap always remain zero and not be changeable.",
     },
     {
       acceptanceId: "renderer.particle-grid",
       behaviorEvidence:
-        "Particle width follows luminance, while shrinkThreshold and maxShrink reduce the height of darker cells and softness controls mask edges.",
+        "Particle width follows luminance around an explicit column center, spans the full row height, and uses pixel-aware horizontal edge coverage.",
       featureName: "Luminance particle geometry",
       id: "particle-geometry",
       referenceBehavior:
         "Each grid cell becomes a soft horizontal particle whose width and height respond to sampled luminance.",
       sourceEvidence:
         "fs_main computes rawWidth, barWidth, heightFactor, hMask, and vMask from the shape properties.",
-      status: "ported",
+      status: "intentionally-changed",
       toolcraftMapping:
-        "The WebGL2 fragment shader preserves the same width, shrink, and smoothstep mask equations.",
+        "The renderer keeps luminance-responsive centered width while removing vertical height shrink so zero row gap cannot produce seams.",
+      userApprovedChangeReason:
+        "The user explicitly rejected row seams at zero gap and asymmetric-looking thinning.",
     },
     {
       acceptanceId: "renderer.particle-grid",
@@ -485,14 +489,11 @@ const gridTargets = [
   ["particle.rows", "slider"],
   ["particle.maxColumnWidth", "slider"],
   ["particle.columnGap", "slider"],
-  ["particle.rowGap", "slider"],
 ] as const;
 
 const shapeTargets = [
   "particle.width",
   "particle.minWidth",
-  "particle.shrinkThreshold",
-  "particle.maxShrink",
   "particle.softness",
 ] as const;
 
@@ -555,7 +556,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
     componentType,
     evidence: "rendered-pixels" as const,
     expectedObservable:
-      "Changing Columns, Rows, Max width, Column gap, or Row gap changes the sampled particle lattice and visible cell geometry.",
+      "Changing Columns, Rows, Maximum width, or Column gap changes the sampled particle lattice and visible cell geometry.",
     fixture: "uploaded gradient and color-block image",
     id: target,
     kind: "control" as const,
@@ -571,7 +572,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
     componentType: "slider",
     evidence: "rendered-pixels" as const,
     expectedObservable:
-      "Changing Width, Minimum width, Shrink threshold, Maximum shrink, or Softness changes particle mask geometry.",
+      "Changing Width gain, Minimum width, or Softness changes centered particle mask geometry.",
     fixture: "uploaded image containing dark, middle, and bright cells",
     id: target,
     kind: "control" as const,

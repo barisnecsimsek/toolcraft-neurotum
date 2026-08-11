@@ -62,16 +62,25 @@ describe("Particle Grid Effect product contract", () => {
       type: "slider",
     });
     expect(getControl("particle.rows")).toMatchObject({ defaultValue: 30, max: 150, min: 5 });
-    expect(getControl("particle.maxColumnWidth")).toMatchObject({ defaultValue: 0.9 });
+    expect(getControl("particle.maxColumnWidth")).toMatchObject({
+      defaultValue: 0.9,
+      label: "Maximum width",
+      max: 1,
+    });
     expect(getControl("particle.columnGap")).toMatchObject({ defaultValue: 0.05 });
-    expect(getControl("particle.rowGap")).toMatchObject({ defaultValue: 0 });
+    expect(getControl("particle.rowGap")).toBeUndefined();
   });
 
   it("particle shape controls map the reference ranges", () => {
-    expect(getControl("particle.width")).toMatchObject({ defaultValue: 1, min: 0.1, max: 1 });
+    expect(getControl("particle.width")).toMatchObject({
+      defaultValue: 1,
+      label: "Width gain",
+      min: 0.1,
+      max: 3,
+    });
     expect(getControl("particle.minWidth")).toMatchObject({ defaultValue: 0, max: 0.5 });
-    expect(getControl("particle.shrinkThreshold")).toMatchObject({ defaultValue: 0.3 });
-    expect(getControl("particle.maxShrink")).toMatchObject({ defaultValue: 0.7 });
+    expect(getControl("particle.shrinkThreshold")).toBeUndefined();
+    expect(getControl("particle.maxShrink")).toBeUndefined();
     expect(getControl("particle.softness")).toMatchObject({ defaultValue: 0.02, max: 0.5 });
   });
 
@@ -209,11 +218,8 @@ describe("Particle Grid Effect product contract", () => {
     "perf: particle.rows drag stays responsive",
     "perf: particle.maxColumnWidth drag stays responsive",
     "perf: particle.columnGap drag stays responsive",
-    "perf: particle.rowGap drag stays responsive",
     "perf: particle.width drag stays responsive",
     "perf: particle.minWidth drag stays responsive",
-    "perf: particle.shrinkThreshold drag stays responsive",
-    "perf: particle.maxShrink drag stays responsive",
     "perf: particle.softness drag stays responsive",
     "perf: particle.dotChance drag stays responsive",
     "perf: particle.dotDensity drag stays responsive",

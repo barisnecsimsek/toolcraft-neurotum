@@ -36,6 +36,33 @@ describe("Particle Grid grain experiment", () => {
     expect(getControl("particle.distortionAmount")).toBeUndefined();
   });
 
+  it("fixes row gap at zero and exposes horizontal connection controls", () => {
+    expect(getControl("particle.rowGap")).toBeUndefined();
+    expect(particleGridFragmentShaderSource).not.toContain("uRowGap");
+    expect(getControl("particle.shrinkThreshold")).toBeUndefined();
+    expect(getControl("particle.maxShrink")).toBeUndefined();
+    expect(particleGridFragmentShaderSource).not.toContain("uShrinkThreshold");
+    expect(particleGridFragmentShaderSource).not.toContain("uMaxShrink");
+    expect(getControl("particle.maxColumnWidth")).toMatchObject({
+      label: "Maximum width",
+      max: 1,
+    });
+    expect(getControl("particle.columnGap")).toMatchObject({ min: 0 });
+    expect(getControl("particle.width")).toMatchObject({
+      label: "Width gain",
+      max: 3,
+    });
+    expect(particleGridFragmentShaderSource).toContain(
+      "float maximumWidth = min(uMaxColumnWidth, availableWidth);",
+    );
+    expect(particleGridFragmentShaderSource).toContain(
+      "float centeredX = (effectUv.x - cellCenterX) * gridDims.x;",
+    );
+    expect(particleGridFragmentShaderSource).toContain(
+      "float edgeWidth = max(uSoftness * 0.5, halfPixelInCell);",
+    );
+  });
+
   it("publishes the experimental control sections inside Particle Grid", () => {
     const sectionTitles = appSchema.panels.controls?.sections.map(
       (section) => section.title,

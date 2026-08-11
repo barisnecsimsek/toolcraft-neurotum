@@ -23,8 +23,8 @@
 | Section | Entity/workflow | Targets | Grouping reason |
 | --- | --- | --- | --- |
 | Source | Input image | `source.image` | Upload and source transforms form one media lifecycle. |
-| Grid | Sampling lattice | `particle.columns`, `particle.rows`, `particle.maxColumnWidth`, `particle.columnGap`, `particle.rowGap` | These values define cell count and available bar bounds. |
-| Particle Shape | Cell geometry | `particle.width`, `particle.minWidth`, `particle.shrinkThreshold`, `particle.maxShrink`, `particle.softness` | These values jointly construct the luminance-responsive particle mask. |
+| Grid | Sampling lattice | `particle.columns`, `particle.rows`, `particle.maxColumnWidth`, `particle.columnGap` | These values define cell count and adjustable horizontal bounds; row gap is fixed at zero. |
+| Particle Shape | Cell geometry | `particle.width`, `particle.minWidth`, `particle.softness` | Width gain controls how quickly luminance reaches the maximum-width cap; width stays centered and spans each row without vertical seams. |
 | Color Mapping | Particle colors | `particle.colorMode`, `particle.tintColor`, `particle.groupMode`, `particle.groupColor1..4` | These values reproduce original/tint and brightness/hue grouping branches. |
 | Dot Pattern | Bright-cell texture | `particle.dotChance`, `particle.dotPatternBackground`, `particle.dotDensity`, `particle.dotSize` | These values jointly control the deterministic dot sub-pattern. |
 | Background | Output background | `export.includeBackground`, `appearance.background` | Inclusion and color define preview/export compositing and PNG alpha. |
